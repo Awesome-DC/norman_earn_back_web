@@ -1,0 +1,12 @@
+flask
+flask-sqlalchemy
+flask-mail
+flask-cors
+flask-limiter
+python-dotenv
+werkzeug
+requests
+python-telegram-bot
+apscheduler
+gunicorn
+psycopg2-binary
