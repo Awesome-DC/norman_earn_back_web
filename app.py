@@ -43,13 +43,13 @@ app.config['SECRET_KEY']                     = os.getenv('SECRET_KEY', 'fallback
 app.config['MAIL_SERVER']         = 'smtp.gmail.com'
 app.config['MAIL_PORT']           = 587
 app.config['MAIL_USE_TLS']        = True
-app.config['MAIL_USERNAME']       = os.getenv('MAIL_USERNAME', '')
-app.config['MAIL_PASSWORD']       = os.getenv('MAIL_PASSWORD', '')
+app.config['MAIL_USERNAME']       = "normansearn@gmail.com"
+app.config['MAIL_PASSWORD']       = "kqim rnok gvpj yuny"
 app.config['MAIL_DEFAULT_SENDER'] = ('Norman-Earn', os.getenv('MAIL_USERNAME', ''))
 
 # ── Telegram Bot config (also used by routes.py for alerts) ──
-BOT_TOKEN     = os.getenv('BOT_TOKEN', '')
-ADMIN_CHAT_ID = int(os.getenv('ADMIN_CHAT_ID', '0'))
+BOT_TOKEN     = "8360348188:AAFE5QV4t6qsSjYQg6hw_6jxvDpPyiPa5Os"
+ADMIN_CHAT_ID = "8038576832"
 
 # ── Rate limiter — protects against brute force and spam ──
 limiter = Limiter(
