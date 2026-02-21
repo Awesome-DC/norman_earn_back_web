@@ -16,8 +16,7 @@ CORS(app, origins=[
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'https://norman-earn.onrender.com',
-    # add your Vercel URL below when you have it e.g:
-    # 'https://norman-earn.vercel.app',
+    'https://norman-earn.vercel.app',
 ])
 
 # ── Security headers — added to every response ──
