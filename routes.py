@@ -213,8 +213,9 @@ def create_user():
         return jsonify({"success": False, "message": "All fields are required."}), 400
     if len(password) < 6:
         return jsonify({"success": False, "message": "Password must be at least 6 characters."}), 400
-    if not re.match(r'^0\d{10}$', phone):
-        return jsonify({"success": False, "message": "Phone must start with 0 and be 11 digits."}), 400
+    # Accept international format e.g. +2348012345678 or any dial code + number
+    if not re.match(r'^\+\d{6,15}$', phone):
+        return jsonify({"success": False, "message": "Invalid phone number format."}), 400
     # Gmail only, max 2 dots before @
     if not re.match(r'^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+){0,2}@gmail\.com$', email):
         return jsonify({"success": False, "message": "Only @gmail.com addresses allowed (max 2 dots before @)."}), 400
