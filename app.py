@@ -46,7 +46,7 @@ app.config['MAIL_PORT']           = 465
 app.config['MAIL_USE_TLS']        = False
 app.config['MAIL_USE_SSL']        = True
 app.config['MAIL_USERNAME']       = 'normansearn@gmail.com'
-app.config['MAIL_PASSWORD']       = 'kqim rnok gvpj yuny'
+app.config['MAIL_PASSWORD']       = 'kqimrnokgvpjyuny'
 app.config['MAIL_DEFAULT_SENDER'] = ('Norman-Earn', 'normansearn@gmail.com')
 
 # ── Telegram Bot config (also used by routes.py for alerts) ──
