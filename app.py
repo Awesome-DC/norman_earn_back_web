@@ -43,13 +43,13 @@ app.config['SECRET_KEY']                     = os.getenv('SECRET_KEY', 'fallback
 app.config['MAIL_SERVER']         = 'smtp.gmail.com'
 app.config['MAIL_PORT']           = 587
 app.config['MAIL_USE_TLS']        = True
-app.config['MAIL_USERNAME']       = "normansearn@gmail.com"
-app.config['MAIL_PASSWORD']       = "kqim rnok gvpj yuny"
+app.config['MAIL_USERNAME']       = os.getenv('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD']       = os.getenv('MAIL_PASSWORD', '')
 app.config['MAIL_DEFAULT_SENDER'] = ('Norman-Earn', os.getenv('MAIL_USERNAME', ''))
 
 # ── Telegram Bot config (also used by routes.py for alerts) ──
-BOT_TOKEN     = "8360348188:AAFE5QV4t6qsSjYQg6hw_6jxvDpPyiPa5Os"
-ADMIN_CHAT_ID = "8038576832"
+BOT_TOKEN     = os.getenv('BOT_TOKEN', '')
+ADMIN_CHAT_ID = int(os.getenv('ADMIN_CHAT_ID', '0'))
 
 # ── Rate limiter — protects against brute force and spam ──
 limiter = Limiter(
@@ -68,7 +68,15 @@ app.config['MAIL_INSTANCE'] = mail
 app.register_blueprint(main_routes)
 
 with app.app_context():
-    db.create_all()  # Creates all tables fresh on PostgreSQL
+    db.create_all()
+    # Fix phone column size for international numbers
+    try:
+        from sqlalchemy import text
+        with db.engine.begin() as conn:
+            conn.execute(text('ALTER TABLE "user" ALTER COLUMN phone TYPE VARCHAR(20)'))
+            print('[DB] Phone column updated to VARCHAR(20)')
+    except Exception as e:
+        print(f'[DB] Phone column already correct or error: {e}')
     print('[DB] Tables ready.')
 
 if __name__ == '__main__':
