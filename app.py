@@ -17,6 +17,7 @@ CORS(app, origins=[
     'http://127.0.0.1:3000',
     'https://norman-earn.onrender.com',
     'https://norman-earn.vercel.app',
+    'https://norman-earn-git-main-awesome-dcs-projects.vercel.app',
 ])
 
 # ── Security headers — added to every response ──
@@ -43,8 +44,8 @@ app.config['SECRET_KEY']                     = os.getenv('SECRET_KEY', 'fallback
 app.config['MAIL_SERVER']         = 'smtp.gmail.com'
 app.config['MAIL_PORT']           = 587
 app.config['MAIL_USE_TLS']        = True
-app.config['MAIL_USERNAME']       = "normansearn@gmail.com"
-app.config['MAIL_PASSWORD']       = "kqim rnok gvpj yuny"
+app.config['MAIL_USERNAME']       = os.getenv('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD']       = os.getenv('MAIL_PASSWORD', '')
 app.config['MAIL_DEFAULT_SENDER'] = ('Norman-Earn', os.getenv('MAIL_USERNAME', ''))
 
 # ── Telegram Bot config (also used by routes.py for alerts) ──
