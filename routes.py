@@ -140,7 +140,12 @@ def send_telegram_alert(w):
 
 
 def send_otp_email(user, otp, subject="🔑 Your Norman-Earn Verification Code", heading="Verify Your Email", body_text="Use the code below to verify your email address."):
-    mail = current_app.config['MAIL_INSTANCE']
+    from threading import Thread
+    from flask import current_app
+    app = current_app._get_current_object()
+    mail = app.config['MAIL_INSTANCE']
+    # Build message first
+
     msg = Message(
         subject=subject,
         recipients=[user.email],
@@ -168,7 +173,15 @@ def send_otp_email(user, otp, subject="🔑 Your Norman-Earn Verification Code",
         </div>
         """
     )
-    mail.send(msg)
+    # Send in background thread so it doesn't block/timeout the request
+    def send_async(app, msg):
+        with app.app_context():
+            try:
+                mail.send(msg)
+                print('[EMAIL] Sent successfully')
+            except Exception as e:
+                print(f'[EMAIL ERROR] {e}')
+    Thread(target=send_async, args=(app, msg), daemon=True).start()
 
 # ── Compute current gems/hr from upgrades ──
 UPGRADE_BOOSTS = {
