@@ -17,7 +17,7 @@ CORS(app, origins=[
     'http://127.0.0.1:3000',
     'https://norman-earn.vercel.app',
     'https://norman-earn-git-main-awesome-dcs-projects.vercel.app',
-    'https://norman-earn-api.up.railway.app',
+    'https://norman-earn.onrender.com',
 ])
 
 # ── Security headers — added to every response ──
