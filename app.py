@@ -41,13 +41,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY']                     = os.getenv('SECRET_KEY', 'fallback-dev-secret-change-me')
 
 # ── Gmail SMTP ──
-app.config['MAIL_SERVER']         = 'smtp.gmail.com'
-app.config['MAIL_PORT']           = 465
-app.config['MAIL_USE_TLS']        = False
-app.config['MAIL_USE_SSL']        = True
-app.config['MAIL_USERNAME']       = os.getenv('MAIL_USERNAME', '')
-app.config['MAIL_PASSWORD']       = os.getenv('MAIL_PASSWORD', '')
-app.config['MAIL_DEFAULT_SENDER'] = ('Norman-Earn', os.getenv('MAIL_USERNAME', ''))
+# Resend email service
+app.config['RESEND_API_KEY'] = os.getenv('RESEND_API_KEY', '')
+app.config['MAIL_FROM']      = os.getenv('MAIL_FROM', 'onboarding@resend.dev')
 
 # ── Telegram Bot config (also used by routes.py for alerts) ──
 BOT_TOKEN     = os.getenv('BOT_TOKEN', '')
@@ -64,8 +60,6 @@ limiter = Limiter(
 app.config['LIMITER'] = limiter
 
 db.init_app(app)
-mail = Mail(app)
-app.config['MAIL_INSTANCE'] = mail
 
 app.register_blueprint(main_routes)
 

@@ -1,6 +1,5 @@
 flask
 flask-sqlalchemy
-flask-mail
 flask-cors
 flask-limiter
 python-dotenv

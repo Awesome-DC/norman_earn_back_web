@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify, current_app
 from dotenv import load_dotenv
 import os
 load_dotenv()
-from flask_mail import Message
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -142,17 +141,15 @@ def send_telegram_alert(w):
 def send_otp_email(user, otp, subject="🔑 Your Norman-Earn Verification Code", heading="Verify Your Email", body_text="Use the code below to verify your email address."):
     from threading import Thread
     from flask import current_app
+    import requests as req
     app = current_app._get_current_object()
-    mail = app.config['MAIL_INSTANCE']
-    # Build message first
+    resend_key = app.config.get('RESEND_API_KEY', '')
+    mail_from  = app.config.get('MAIL_FROM', 'onboarding@resend.dev')
 
-    msg = Message(
-        subject=subject,
-        recipients=[user.email],
-        html=f"""
+    html_body = f"""
         <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;background:#04040d;color:#fff;border-radius:16px;overflow:hidden;">
           <div style="background:linear-gradient(135deg,#00ffcc,#00b894);padding:24px;text-align:center;">
-            <h1 style="margin:0;color:#04040d;font-size:22px;">⬡ NORMAN-EARN</h1>
+            <h1 style="margin:0;color:#04040d;font-size:22px;">NORMAN-EARN</h1>
             <p style="margin:4px 0 0;color:#04040d99;font-size:12px;letter-spacing:3px;">GEM MINING PLATFORM</p>
           </div>
           <div style="padding:32px;text-align:center;">
@@ -168,20 +165,35 @@ def send_otp_email(user, otp, subject="🔑 Your Norman-Earn Verification Code",
             </p>
           </div>
           <div style="background:#0a0a12;padding:16px;text-align:center;border-top:1px solid #ffffff0a;">
-            <p style="color:#ffffff22;font-size:11px;margin:0;">Norman-Earn · Gem Mining Platform</p>
+            <p style="color:#ffffff22;font-size:11px;margin:0;">Norman-Earn - Gem Mining Platform</p>
           </div>
         </div>
-        """
-    )
-    # Send in background thread so it doesn't block/timeout the request
-    def send_async(app, msg):
+    """
+
+    def send_async(app, to_email, subject, html_body, resend_key, mail_from):
         with app.app_context():
             try:
-                mail.send(msg)
-                print('[EMAIL] Sent successfully')
+                response = req.post(
+                    "https://api.resend.com/emails",
+                    headers={
+                        "Authorization": f"Bearer {resend_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "from": f"Norman-Earn <{mail_from}>",
+                        "to": [to_email],
+                        "subject": subject,
+                        "html": html_body
+                    }
+                )
+                if response.status_code == 200 or response.status_code == 201:
+                    print(f"[EMAIL] Sent successfully to {to_email}")
+                else:
+                    print(f"[EMAIL ERROR] Resend returned {response.status_code}: {response.text}")
             except Exception as e:
-                print(f'[EMAIL ERROR] {e}')
-    Thread(target=send_async, args=(app, msg), daemon=True).start()
+                print(f"[EMAIL ERROR] {e}")
+
+    Thread(target=send_async, args=(app, user.email, subject, html_body, resend_key, mail_from), daemon=True).start()
 
 # ── Compute current gems/hr from upgrades ──
 UPGRADE_BOOSTS = {
@@ -1099,16 +1111,15 @@ def admin_process_withdrawal(wr_id):
     user = User.query.filter_by(username=wr.username).first()
     if user:
         try:
-            mail = current_app.config['MAIL_INSTANCE']
-            status_word = "Approved ✅" if action == 'approve' else "Rejected ❌"
-            color       = "#00ffcc"    if action == 'approve' else "#ff4444"
-            msg = Message(
-                subject=f"Norman-Earn: Withdrawal {status_word}",
-                recipients=[user.email],
-                html=f"""
+            import requests as req
+            resend_key = current_app.config.get('RESEND_API_KEY', '')
+            mail_from  = current_app.config.get('MAIL_FROM', 'onboarding@resend.dev')
+            status_word = "Approved" if action == 'approve' else "Rejected"
+            color       = "#00ffcc"  if action == 'approve' else "#ff4444"
+            html_body = f"""
                 <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;background:#04040d;color:#fff;border-radius:16px;overflow:hidden;">
                   <div style="background:linear-gradient(135deg,#00ffcc,#00b894);padding:24px;text-align:center;">
-                    <h1 style="margin:0;color:#04040d;">⬡ NORMAN-EARN</h1>
+                    <h1 style="margin:0;color:#04040d;">NORMAN-EARN</h1>
                   </div>
                   <div style="padding:32px;text-align:center;">
                     <h2 style="color:{color};">Withdrawal {status_word}</h2>
@@ -1117,14 +1128,17 @@ def admin_process_withdrawal(wr_id):
                       <p style="color:#ffffff66;margin:4px 0;">Amount: <strong style="color:{color};">💎 {wr.gems} ({wr.usd_value:.2f} USD)</strong></p>
                       <p style="color:#ffffff66;margin:4px 0;">Network: <strong style="color:#fff;">{wr.network}</strong></p>
                       <p style="color:#ffffff66;margin:4px 0;">Wallet: <strong style="color:#fff;">{wr.wallet[:20]}...</strong></p>
-                      {f'<p style="color:#ffffff66;margin:8px 0 0;">Note: <em style="color:#ffaa44;">{note}</em></p>' if note else ''}
                     </div>
                     {'<p style="color:#00ffcc88;">Your crypto will arrive within 24 hours.</p>' if action == "approve" else '<p style="color:#ff888888;">Your gems have been refunded to your balance.</p>'}
                   </div>
                 </div>
-                """
+            """
+            req.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                json={"from": f"Norman-Earn <{mail_from}>", "to": [user.email],
+                      "subject": f"Norman-Earn: Withdrawal {status_word}", "html": html_body}
             )
-            mail.send(msg)
         except Exception as e:
             print(f"[EMAIL ERROR withdrawal notify]: {e}")
 
@@ -1152,16 +1166,15 @@ def admin_broadcast():
     sent  = 0
     failed = 0
 
-    mail = current_app.config['MAIL_INSTANCE']
+    import requests as req
+    resend_key = current_app.config.get('RESEND_API_KEY', '')
+    mail_from  = current_app.config.get('MAIL_FROM', 'onboarding@resend.dev')
     for user in users:
         try:
-            msg = Message(
-                subject=f"Norman-Earn: {subject}",
-                recipients=[user.email],
-                html=f"""
+            html_body = f"""
                 <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;background:#04040d;color:#fff;border-radius:16px;overflow:hidden;">
                   <div style="background:linear-gradient(135deg,#00ffcc,#00b894);padding:24px;text-align:center;">
-                    <h1 style="margin:0;color:#04040d;">⬡ NORMAN-EARN</h1>
+                    <h1 style="margin:0;color:#04040d;">NORMAN-EARN</h1>
                   </div>
                   <div style="padding:32px;">
                     <h2 style="color:#00ffcc;">{subject}</h2>
@@ -1172,8 +1185,12 @@ def admin_broadcast():
                   </div>
                 </div>
                 """
+            req.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                json={"from": f"Norman-Earn <{mail_from}>", "to": [user.email],
+                      "subject": f"Norman-Earn: {subject}", "html": html_body}
             )
-            mail.send(msg)
             sent += 1
         except:
             failed += 1
