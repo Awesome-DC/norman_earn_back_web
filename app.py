@@ -14,9 +14,9 @@ app = Flask(__name__)
 CORS(app, origins=[
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'https://norman-earn.vercel.app',
-    'https://norman-earn-git-main-awesome-dcs-projects.vercel.app',
-    'https://norman-earn-api.up.railway.app',
+    'https://norman-api.up.railway.app',
+    'https://norman-api.up.railway.app',
+    'https://norman-api.up.railway.app',
 ])
 
 # ── Security headers — added to every response ──
