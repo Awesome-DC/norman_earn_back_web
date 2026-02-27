@@ -141,10 +141,9 @@ def send_telegram_alert(w):
 def send_otp_email(user, otp, subject="🔑 Your Norman-Earn Verification Code", heading="Verify Your Email", body_text="Use the code below to verify your email address."):
     from threading import Thread
     from flask import current_app
-    import requests as req
-    app = current_app._get_current_object()
-    resend_key = app.config.get('RESEND_API_KEY', '')
-    mail_from  = app.config.get('MAIL_FROM', 'onboarding@resend.dev')
+    from flask_mail import Message
+    app  = current_app._get_current_object()
+    mail = app.config['MAIL_INSTANCE']
 
     html_body = f"""
         <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;background:#04040d;color:#fff;border-radius:16px;overflow:hidden;">
@@ -170,30 +169,17 @@ def send_otp_email(user, otp, subject="🔑 Your Norman-Earn Verification Code",
         </div>
     """
 
-    def send_async(app, to_email, subject, html_body, resend_key, mail_from):
+    msg = Message(subject=subject, recipients=[user.email], html=html_body)
+
+    def send_async(app, msg):
         with app.app_context():
             try:
-                response = req.post(
-                    "https://api.resend.com/emails",
-                    headers={
-                        "Authorization": f"Bearer {resend_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "from": f"Norman-Earn <{mail_from}>",
-                        "to": [to_email],
-                        "subject": subject,
-                        "html": html_body
-                    }
-                )
-                if response.status_code == 200 or response.status_code == 201:
-                    print(f"[EMAIL] Sent successfully to {to_email}")
-                else:
-                    print(f"[EMAIL ERROR] Resend returned {response.status_code}: {response.text}")
+                mail.send(msg)
+                print(f"[EMAIL] Sent to {user.email}")
             except Exception as e:
                 print(f"[EMAIL ERROR] {e}")
 
-    Thread(target=send_async, args=(app, user.email, subject, html_body, resend_key, mail_from), daemon=True).start()
+    Thread(target=send_async, args=(app, msg), daemon=True).start()
 
 # ── Compute current gems/hr from upgrades ──
 UPGRADE_BOOSTS = {
@@ -1111,9 +1097,8 @@ def admin_process_withdrawal(wr_id):
     user = User.query.filter_by(username=wr.username).first()
     if user:
         try:
-            import requests as req
-            resend_key = current_app.config.get('RESEND_API_KEY', '')
-            mail_from  = current_app.config.get('MAIL_FROM', 'onboarding@resend.dev')
+            from flask_mail import Message
+            mail = current_app.config['MAIL_INSTANCE']
             status_word = "Approved" if action == 'approve' else "Rejected"
             color       = "#00ffcc"  if action == 'approve' else "#ff4444"
             html_body = f"""
@@ -1133,12 +1118,9 @@ def admin_process_withdrawal(wr_id):
                   </div>
                 </div>
             """
-            req.post(
-                "https://api.resend.com/emails",
-                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
-                json={"from": f"Norman-Earn <{mail_from}>", "to": [user.email],
-                      "subject": f"Norman-Earn: Withdrawal {status_word}", "html": html_body}
-            )
+            msg = Message(subject=f"Norman-Earn: Withdrawal {status_word}",
+                          recipients=[user.email], html=html_body)
+            mail.send(msg)
         except Exception as e:
             print(f"[EMAIL ERROR withdrawal notify]: {e}")
 
@@ -1166,9 +1148,8 @@ def admin_broadcast():
     sent  = 0
     failed = 0
 
-    import requests as req
-    resend_key = current_app.config.get('RESEND_API_KEY', '')
-    mail_from  = current_app.config.get('MAIL_FROM', 'onboarding@resend.dev')
+    from flask_mail import Message
+    mail = current_app.config['MAIL_INSTANCE']
     for user in users:
         try:
             html_body = f"""
@@ -1185,12 +1166,9 @@ def admin_broadcast():
                   </div>
                 </div>
                 """
-            req.post(
-                "https://api.resend.com/emails",
-                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
-                json={"from": f"Norman-Earn <{mail_from}>", "to": [user.email],
-                      "subject": f"Norman-Earn: {subject}", "html": html_body}
-            )
+            msg = Message(subject=f"Norman-Earn: {subject}",
+                          recipients=[user.email], html=html_body)
+            mail.send(msg)
             sent += 1
         except:
             failed += 1

@@ -16,7 +16,7 @@ CORS(app, origins=[
     'http://127.0.0.1:3000',
     'https://norman-earn.vercel.app',
     'https://norman-earn-git-main-awesome-dcs-projects.vercel.app',
-    'https://norman-earn.onrender.com',
+    'https://norman-earn-api.up.railway.app',
 ])
 
 # ── Security headers — added to every response ──
@@ -40,9 +40,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY']                     = os.getenv('SECRET_KEY', 'fallback-dev-secret-change-me')
 
 # ── Gmail SMTP ──
-# Resend email service
-app.config['RESEND_API_KEY'] = os.getenv('RESEND_API_KEY', '')
-app.config['MAIL_FROM']      = os.getenv('MAIL_FROM', 'onboarding@resend.dev')
+# Gmail SMTP
+from flask_mail import Mail
+app.config['MAIL_SERVER']         = 'smtp.gmail.com'
+app.config['MAIL_PORT']           = 587
+app.config['MAIL_USE_TLS']        = True
+app.config['MAIL_USE_SSL']        = False
+app.config['MAIL_USERNAME']       = os.getenv('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD']       = os.getenv('MAIL_PASSWORD', '')
+app.config['MAIL_DEFAULT_SENDER'] = ('Norman-Earn', os.getenv('MAIL_USERNAME', ''))
+mail = Mail(app)
+app.config['MAIL_INSTANCE'] = mail
 
 # ── Telegram Bot config (also used by routes.py for alerts) ──
 BOT_TOKEN     = os.getenv('BOT_TOKEN', '')
