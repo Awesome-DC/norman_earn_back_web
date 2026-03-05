@@ -69,6 +69,59 @@ class User(db.Model):
             "total_earned":    self.total_earned,
             "mining_start":    self.mining_start.isoformat() if self.mining_start else None,
             "upgrades_owned":  self.upgrades_owned,
+            "created_at":      self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class DailyQuest(db.Model):
+    """Daily mystery quest set via Telegram bot."""
+    id           = db.Column(db.Integer, primary_key=True)
+    question     = db.Column(db.Text, nullable=False)
+    answer       = db.Column(db.String(200), nullable=False)  # lowercase for comparison
+    reward_gems  = db.Column(db.Float, default=10.0)
+    max_winners  = db.Column(db.Integer, default=10)
+    winners      = db.Column(db.Text, default="[]")  # JSON list of usernames
+    is_active    = db.Column(db.Boolean, default=True)
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at   = db.Column(db.DateTime, nullable=True)  # optional expiry
+
+    def to_dict(self):
+        import json
+        winners = json.loads(self.winners or "[]")
+        return {
+            "id":          self.id,
+            "question":    self.question,
+            "reward_gems": self.reward_gems,
+            "max_winners": self.max_winners,
+            "winners_count": len(winners),
+            "is_active":   self.is_active,
+            "created_at":  self.created_at.isoformat(),
+        }
+
+
+
+class DailyQuest(db.Model):
+    """Daily mystery quest set via Telegram bot."""
+    id           = db.Column(db.Integer, primary_key=True)
+    question     = db.Column(db.Text, nullable=False)
+    answer       = db.Column(db.String(200), nullable=False)
+    reward_gems  = db.Column(db.Float, default=10.0)
+    max_winners  = db.Column(db.Integer, default=10)
+    winners      = db.Column(db.Text, default="[]")
+    is_active    = db.Column(db.Boolean, default=True)
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        import json
+        winners = json.loads(self.winners or "[]")
+        return {
+            "id":            self.id,
+            "question":      self.question,
+            "reward_gems":   self.reward_gems,
+            "max_winners":   self.max_winners,
+            "winners_count": len(winners),
+            "is_active":     self.is_active,
+            "created_at":    self.created_at.isoformat(),
         }
 
 
