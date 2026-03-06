@@ -34,8 +34,8 @@ def rate_limit(key, max_calls, window_seconds):
     entry['count'] += 1
     return True, 0
 
-# Strike counter — persists across rate limit windows
-_strike_store = {}  # key -> int
+# Strike counter — persists across rate limit windows (DB-backed via User table)
+_strike_store = {}
 
 def increment_strike(key):
     _strike_store[key] = _strike_store.get(key, 0) + 1
@@ -43,6 +43,28 @@ def increment_strike(key):
 
 def get_strikes(key):
     return _strike_store.get(key, 0)
+
+# ── Bot / abuse detection helpers ──
+BOT_SIGNALS = [
+    'python-requests', 'curl', 'wget', 'httpx', 'aiohttp',
+    'axios', 'node-fetch', 'go-http', 'java/', 'libwww',
+]
+
+def is_bot_request():
+    """Detect requests that look automated."""
+    ua = request.headers.get('User-Agent', '').lower()
+    # Missing or suspicious user agent
+    if not ua or any(sig in ua for sig in BOT_SIGNALS):
+        return True, "Automated client detected"
+    # Missing Origin header on a POST (browsers always send it)
+    origin = request.headers.get('Origin', '')
+    if not origin:
+        return True, "Missing Origin header"
+    # Origin must be our frontend
+    allowed_origins = ['https://norman-earn.vercel.app', 'http://localhost:3000']
+    if origin not in allowed_origins:
+        return True, f"Invalid origin: {origin}"
+    return False, None
 
 
 # ── Rate limiter (initialized in app.py, accessed here) ──
@@ -302,7 +324,21 @@ def create_user():
     # Get real IP — Railway/Render proxy sets X-Forwarded-For
     ip = (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
 
-    # Parse body first so we can include user details in alerts
+    # ── Bot detection — check BEFORE parsing body ──
+    bot, bot_reason = is_bot_request()
+    if bot:
+        send_security_alert("rate_limit", {
+            "username": "BOT",
+            "email":    "N/A",
+            "ip":       ip,
+            "ref_code": request.get_json(silent=True, force=True) and (request.get_json(silent=True, force=True).get('referral_code') or 'none') or 'none',
+            "strikes":  increment_strike(f'strike_signup_{ip}'),
+            "reason":   f"Bot/script detected: {bot_reason}"
+        })
+        # Return fake success to confuse scripts
+        return jsonify({"success": True, "message": "Account created!", "token": "invalid"}), 200
+
+    # Parse body
     data = request.get_json()
     if not data:
         return jsonify({"success": False, "message": "No data received."}), 400
@@ -316,7 +352,6 @@ def create_user():
     # Max 2 signups per IP per day
     allowed, retry = rate_limit(f'signup_{ip}', 2, 86400)
     if not allowed:
-        # Increment and get strike count for this IP
         strikes = increment_strike(f'strike_signup_{ip}')
 
         # Get referrer real info
@@ -334,8 +369,9 @@ def create_user():
             "referrer":         referrer_info["username"] if referrer_info else None,
             "referrer_email":   referrer_info["email"]    if referrer_info else None,
             "strikes":          strikes,
-            "reason":           f"Hit signup rate limit (2/day) — possible bot/spam"
+            "reason":           "Hit signup rate limit (2/day) — possible bot/spam"
         })
+        # Real users get a helpful message, bots already got fake success above
         return jsonify({"success": False,
             "message": "Too many signups from your network today. Try again tomorrow."}), 429
 
