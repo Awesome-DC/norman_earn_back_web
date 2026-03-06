@@ -341,11 +341,11 @@ def create_user():
             })
             return jsonify({"success": False,
                 "message": "You cannot refer someone from the same network."}), 400
-        # Cap: max 20 referrals per user
+        # Cap: max 50 referrals per user
         existing_refs = User.query.filter_by(referred_by=ref_code).count()
-        if existing_refs >= 20:
+        if existing_refs >= 50:
             return jsonify({"success": False,
-                "message": "This referral code has reached its limit."}), 400
+                "message": "This referral code is no longer accepting new referrals."}), 400
 
     new_user = User(
         username=username,
@@ -1231,8 +1231,17 @@ def answer_daily_quest():
 #  DAILY QUEST — Admin create (called from Telegram bot via HTTP)
 # ══════════════════════════════════════════
 @main_routes.route('/api/admin/daily-quest', methods=['POST'])
-@require_admin
 def create_daily_quest():
+    # Accept either: admin session token OR the app SECRET_KEY (for Telegram bot)
+    auth = request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    secret_key = current_app.config.get('SECRET_KEY', '')
+
+    if auth != secret_key:
+        # Try as a user session token (admin user)
+        user = User.query.filter_by(session_token=auth).first()
+        if not user or not user.is_admin:
+            return jsonify({"success": False, "message": "Admin access required."}), 403
+
     data        = request.get_json()
     question    = (data.get('question')   or '').strip()
     answer      = (data.get('answer')     or '').strip().lower()
