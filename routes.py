@@ -973,13 +973,28 @@ def get_referrals(username):
         else:
             pending.append(entry)
 
+    # Calculate actual referral gems credited (signup bonuses + 10% cut)
+    # Count only referrals where iron pickaxe was bought (bonus was actually paid)
+    actual_signup_bonuses = User.query.filter_by(
+        referred_by=user.referral_code,
+        has_iron_pickaxe=True
+    ).count() * 10.0
+
+    # 10% cut estimate from verified referrals' total_earned
+    actual_cut = sum(r.total_earned * 0.10 for r in
+        User.query.filter_by(referred_by=user.referral_code, is_verified=True).all()
+    )
+
     return jsonify({
-        "success":      True,
-        "verified":     verified,
-        "pending":      pending,
-        "count":        len(verified),
-        "referral_code":user.referral_code,
-        "referred_by":  referred_by_username,
+        "success":              True,
+        "verified":             verified,
+        "pending":              pending,
+        "count":                len(verified),
+        "referral_code":        user.referral_code,
+        "referred_by":          referred_by_username,
+        "referral_gems_earned": round(actual_signup_bonuses + actual_cut, 4),
+        "signup_bonuses":       round(actual_signup_bonuses, 4),
+        "mining_cut":           round(actual_cut, 4),
     })
 
 
