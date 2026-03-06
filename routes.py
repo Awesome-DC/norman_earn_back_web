@@ -34,6 +34,16 @@ def rate_limit(key, max_calls, window_seconds):
     entry['count'] += 1
     return True, 0
 
+# Strike counter — persists across rate limit windows
+_strike_store = {}  # key -> int
+
+def increment_strike(key):
+    _strike_store[key] = _strike_store.get(key, 0) + 1
+    return _strike_store[key]
+
+def get_strikes(key):
+    return _strike_store.get(key, 0)
+
 
 # ── Rate limiter (initialized in app.py, accessed here) ──
 def get_limiter():
@@ -133,20 +143,37 @@ def send_security_alert(alert_type, details: dict):
                 f"{icon} *SECURITY ALERT — {alert_type.replace('_',' ').upper()}*",
                 "",
             ]
+            # Offending user
             if details.get("username"):
                 lines.append(f"👤 Username: `{details['username']}`")
             if details.get("email"):
                 lines.append(f"📧 Email: `{details['email']}`")
             if details.get("ip"):
                 lines.append(f"🌐 IP: `{details['ip']}`")
-            if details.get("ref_code"):
-                lines.append(f"🔗 Ref Code: `{details['ref_code']}`")
-            if details.get("referrer"):
-                lines.append(f"👥 Referrer: `{details['referrer']}`")
+            if details.get("ref_code") and details["ref_code"] != "none":
+                lines.append(f"🔗 Ref Code Used: `{details['ref_code']}`")
+
+            # Referrer (real account being farmed)
+            if details.get("referrer") or details.get("referrer_email"):
+                lines.append("")
+                lines.append("*— Referrer Account —*")
+                if details.get("referrer"):
+                    lines.append(f"👑 Real Username: `{details['referrer']}`")
+                if details.get("referrer_email"):
+                    lines.append(f"📬 Real Email: `{details['referrer_email']}`")
+
             if details.get("balance"):
                 lines.append(f"💎 Balance: `{details['balance']}`")
             if details.get("reason"):
+                lines.append(f"")
                 lines.append(f"📝 Reason: {details['reason']}")
+
+            # Strike counter
+            if details.get("strikes"):
+                strike_num = details["strikes"]
+                bar = "🔴" * min(strike_num, 10)
+                lines.append(f"⚡ Strike Count: {bar} #{strike_num}")
+
             lines.append("")
             lines.append("_Use /ban <username> to ban this user._")
 
@@ -289,12 +316,25 @@ def create_user():
     # Max 2 signups per IP per day
     allowed, retry = rate_limit(f'signup_{ip}', 2, 86400)
     if not allowed:
+        # Increment and get strike count for this IP
+        strikes = increment_strike(f'strike_signup_{ip}')
+
+        # Get referrer real info
+        referrer_info = None
+        if ref_code:
+            ref_user = User.query.filter_by(referral_code=ref_code).first()
+            if ref_user:
+                referrer_info = {"username": ref_user.username, "email": ref_user.email}
+
         send_security_alert("rate_limit", {
-            "username": username or "unknown",
-            "email":    email    or "unknown",
-            "ip":       ip,
-            "ref_code": ref_code or "none",
-            "reason":   f"Hit signup rate limit (2/day) — possible bot/spam"
+            "username":         username  or "unknown",
+            "email":            email     or "unknown",
+            "ip":               ip,
+            "ref_code":         ref_code  or "none",
+            "referrer":         referrer_info["username"] if referrer_info else None,
+            "referrer_email":   referrer_info["email"]    if referrer_info else None,
+            "strikes":          strikes,
+            "reason":           f"Hit signup rate limit (2/day) — possible bot/spam"
         })
         return jsonify({"success": False,
             "message": "Too many signups from your network today. Try again tomorrow."}), 429
