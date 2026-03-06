@@ -273,7 +273,8 @@ def calc_gems_per_hr(upgrades_json):
 @main_routes.route('/api/users', methods=['POST'])
 def create_user():
     # IP rate limit: 5 signups per IP per day
-    ip = request.remote_addr
+    # Get real IP — Railway/Render proxy sets X-Forwarded-For
+    ip = (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip()
     # Max 2 signups per IP per day (down from 5)
     allowed, retry = rate_limit(f'signup_{ip}', 2, 86400)
     if not allowed:
@@ -296,8 +297,12 @@ def create_user():
 
     if not all([username, email, phone, password]):
         return jsonify({"success": False, "message": "All fields are required."}), 400
-    if len(password) < 6:
-        return jsonify({"success": False, "message": "Password must be at least 6 characters."}), 400
+    if len(password) < 7:
+        return jsonify({"success": False, "message": "Password must be at least 7 characters."}), 400
+    if not re.search(r'\d', password):
+        return jsonify({"success": False, "message": "Password must contain at least one number."}), 400
+    if not re.match(r'^[a-zA-Z0-9_]+$', data.get('username','').strip()):
+        return jsonify({"success": False, "message": "Username can only contain letters, numbers, and underscores."}), 400
     # Accept international format e.g. +2348012345678 or any dial code + number
     if not re.match(r'^\+\d{6,15}$', phone):
         return jsonify({"success": False, "message": "Invalid phone number format."}), 400
