@@ -984,19 +984,23 @@ def forgot_password():
     found_by_email    = None
     found_by_phone    = None
 
+    print(f"[FORGOT] username={repr(username)} email={repr(email)} phone={repr(phone)}")
+
     if username:
-        # Case-insensitive search
         found_by_username = User.query.filter(
             db.func.lower(User.username) == username.lower()
         ).first()
+        print(f"[FORGOT] username lookup -> {found_by_username.username if found_by_username else None}")
 
     if email:
         found_by_email = User.query.filter(
             db.func.lower(User.email) == email.lower()
         ).first()
+        print(f"[FORGOT] email lookup -> {found_by_email.username if found_by_email else None}")
 
     if phone:
         found_by_phone = User.query.filter_by(phone=phone).first()
+        print(f"[FORGOT] phone lookup -> {found_by_phone.username if found_by_phone else None}")
 
     # Collect all found users, count matches per user
     found_users = {}
@@ -1004,15 +1008,18 @@ def forgot_password():
         if u:
             found_users[u.id] = found_users.get(u.id, 0) + 1
 
+    print(f"[FORGOT] found_users={found_users}")
+
     # Pick the user with the most matches
     if found_users:
         best_id = max(found_users, key=lambda uid: found_users[uid])
         matches = found_users[best_id]
         user    = User.query.get(best_id)
+        print(f"[FORGOT] best match: {user.username}, matches={matches}")
 
     if not user or matches < 2:
         return jsonify({"success": False,
-            "message": "Could not verify identity. Check your details and try again."}), 404
+            "message": f"Could not verify identity. Found {matches} match(es). Check your details."}), 404
 
     # Identity verified — generate a short-lived reset token
     reset_token = secrets.token_hex(24)
